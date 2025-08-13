@@ -1,7 +1,28 @@
 import { Helmet } from "react-helmet-async";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Admin() {
   const canonical = typeof window !== 'undefined' ? window.location.href : 'https://example.com/admin';
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+      if (!mounted) return;
+      if (!user) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!isAdmin) navigate("/", { replace: true });
+    })();
+    return () => { mounted = false; };
+  }, [navigate]);
+
   return (
     <main className="container py-10">
       <Helmet>

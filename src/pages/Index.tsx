@@ -80,7 +80,11 @@ export default function Index() {
       <header className="py-10">
         <div className="container">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">{pageTitle}</h1>
-          <p className="text-muted-foreground mt-2">{challenge.title}</p>
+          <p className="text-muted-foreground mt-2 flex items-center gap-4 flex-wrap">
+            {challenge.title}
+            <a href="/admin" className="story-link">Admin</a>
+            <a href="/auth" className="story-link">Login / Sign Up</a>
+          </p>
         </div>
       </header>
 
@@ -142,6 +146,14 @@ export default function Index() {
               <LeaderboardTable title="Male" unit={challenge.unit} submissions={male} sortDirection={challenge.sortDirection} />
             </TabsContent>
           </Tabs>
+        </section>
+
+        <section className="mt-10" aria-label="Create your own leaderboard">
+          <Card className="p-6 hover-scale">
+            <h2 className="text-2xl font-bold mb-2">Create your own leaderboard</h2>
+            <p className="text-muted-foreground">Host your own challenge with your rules and branding. Free for one leaderboard — create more with a $9.99 AUD/month plan.</p>
+            <a href="/auth" className="story-link mt-3 inline-block">Get started</a>
+          </Card>
         </section>
       </main>
     </>

@@ -14,16 +14,261 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      challenges: {
+        Row: {
+          created_at: string
+          description: string
+          end_at: string
+          id: string
+          is_active: boolean
+          metric_type: Database["public"]["Enums"]["metric_type"]
+          month: number
+          prizes: string
+          rules: string
+          slug: string
+          sort_direction: Database["public"]["Enums"]["sort_direction"]
+          start_at: string
+          title: string
+          unit: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          end_at: string
+          id?: string
+          is_active?: boolean
+          metric_type: Database["public"]["Enums"]["metric_type"]
+          month: number
+          prizes: string
+          rules: string
+          slug: string
+          sort_direction: Database["public"]["Enums"]["sort_direction"]
+          start_at: string
+          title: string
+          unit?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          end_at?: string
+          id?: string
+          is_active?: boolean
+          metric_type?: Database["public"]["Enums"]["metric_type"]
+          month?: number
+          prizes?: string
+          rules?: string
+          slug?: string
+          sort_direction?: Database["public"]["Enums"]["sort_direction"]
+          start_at?: string
+          title?: string
+          unit?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      leaderboards: {
+        Row: {
+          created_at: string
+          custom_domain: string | null
+          description: string | null
+          id: string
+          metric_type: Database["public"]["Enums"]["metric_type"]
+          owner_user_id: string
+          rules: string | null
+          slug: string
+          sort_direction: Database["public"]["Enums"]["sort_direction"]
+          title: string
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          id?: string
+          metric_type: Database["public"]["Enums"]["metric_type"]
+          owner_user_id: string
+          rules?: string | null
+          slug: string
+          sort_direction: Database["public"]["Enums"]["sort_direction"]
+          title: string
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          id?: string
+          metric_type?: Database["public"]["Enums"]["metric_type"]
+          owner_user_id?: string
+          rules?: string | null
+          slug?: string
+          sort_direction?: Database["public"]["Enums"]["sort_direction"]
+          title?: string
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          approved_at: string | null
+          challenge_id: string
+          created_ip: string | null
+          email: string
+          full_name: string
+          gender: Database["public"]["Enums"]["gender"]
+          id: string
+          notes: string | null
+          proof_url: string | null
+          status: Database["public"]["Enums"]["submission_status"]
+          submitted_at: string
+          user_id: string | null
+          value_display: string
+          value_raw: number
+        }
+        Insert: {
+          approved_at?: string | null
+          challenge_id: string
+          created_ip?: string | null
+          email: string
+          full_name: string
+          gender: Database["public"]["Enums"]["gender"]
+          id?: string
+          notes?: string | null
+          proof_url?: string | null
+          status?: Database["public"]["Enums"]["submission_status"]
+          submitted_at?: string
+          user_id?: string | null
+          value_display: string
+          value_raw: number
+        }
+        Update: {
+          approved_at?: string | null
+          challenge_id?: string
+          created_ip?: string | null
+          email?: string
+          full_name?: string
+          gender?: Database["public"]["Enums"]["gender"]
+          id?: string
+          notes?: string | null
+          proof_url?: string | null
+          status?: Database["public"]["Enums"]["submission_status"]
+          submitted_at?: string
+          user_id?: string | null
+          value_display?: string
+          value_raw?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      gender: "male" | "female" | "other"
+      metric_type: "time" | "reps" | "distance" | "weight"
+      sort_direction: "asc" | "desc"
+      submission_status: "PENDING" | "APPROVED" | "REJECTED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +395,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      gender: ["male", "female", "other"],
+      metric_type: ["time", "reps", "distance", "weight"],
+      sort_direction: ["asc", "desc"],
+      submission_status: ["PENDING", "APPROVED", "REJECTED"],
+    },
   },
 } as const

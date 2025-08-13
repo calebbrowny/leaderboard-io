@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export type MetricType = "time" | "reps" | "distance" | "weight";
 
@@ -26,6 +27,7 @@ const schema = z
     gender: z.enum(["male", "female", "other"]),
     value: z.string().min(1, "Please enter your result"),
     proofUrl: z.string().url().optional().or(z.literal("")),
+    proofFile: z.any().optional(),
     accept: z.boolean().refine((v) => v === true, "You must accept the rules & terms"),
     website: z.string().optional(), // honeypot
   })
@@ -79,8 +81,25 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
       const { raw, display } = parseToRaw(challenge.metricType, data.value);
-      // Placeholder: pending Supabase integration
-      console.log("submission", { ...data, valueRaw: raw, valueDisplay: display, challengeId: challenge.id });
+
+      let finalProofUrl = data.proofUrl || "";
+      const file = (data as any).proofFile as File | undefined;
+      if (file) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData.session?.user;
+        if (!user) {
+          toast({ title: "Login required", description: "Please login to upload files." });
+          return;
+        }
+        const path = `${user.id}/${Date.now()}_${file.name}`;
+        const { error: upErr } = await supabase.storage.from("proofs").upload(path, file, { upsert: false });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("proofs").getPublicUrl(path);
+        finalProofUrl = pub.publicUrl;
+      }
+
+      // Placeholder: pending Supabase integration for saving
+      console.log("submission", { ...data, proofUrl: finalProofUrl, valueRaw: raw, valueDisplay: display, challengeId: challenge.id });
       toast({ title: "Submitted!", description: "Pending approval." });
       reset();
     } catch (e: any) {
@@ -133,6 +152,14 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
             <div>
               <label className="text-sm font-medium">Proof URL (optional)</label>
               <Input placeholder="Link to video/Strava" aria-invalid={false} {...register("proofUrl")} />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Or upload proof file</label>
+              <Input type="file" accept="image/*,video/*" {...register("proofFile")} />
+              <p className="text-xs text-muted-foreground mt-1">Login required to upload. Files are stored securely.</p>
             </div>
           </div>
 
