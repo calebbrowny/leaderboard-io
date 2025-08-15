@@ -141,75 +141,59 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
   const watchedFile = watch("proofFile");
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
+    setIsUploading(true);
     try {
-      console.log('🚀 Starting submission process...', { 
-        user: user ? { id: user.id, email: user.email } : 'anonymous',
+      console.log('🚀 ULTRA SIMPLE SUBMISSION:', { 
+        user: user ? 'LOGGED_IN' : 'ANONYMOUS',
         leaderboard: leaderboard.id 
       });
       
-      // For time-based leaderboards, use dropdown values instead of typed input
+      // Parse the value
       let valueToUse = data.value;
       if (leaderboard.metricType === 'time') {
-        // Convert dropdown time to string format for parsing
         valueToUse = `${timeInput.hours}:${timeInput.minutes.toString().padStart(2, '0')}:${timeInput.seconds.toString().padStart(2, '0')}`;
       }
       
-      console.log('⏱️ Parsing value:', { valueToUse, metricType: leaderboard.metricType });
       const { raw, display } = parseToRawSmart(leaderboard.metricType, valueToUse, leaderboard.smartTimeParsing);
-      console.log('✅ Parsed successfully:', { raw, display });
+      console.log('✅ Value parsed:', { raw, display });
 
+      // Handle file upload (SIMPLIFIED)
       let finalProofUrl = data.proofUrl || "";
       let videoUrl = "";
       
       const file = (data as any).proofFile?.[0] as File | undefined;
       if (file) {
-        console.log('📁 File upload detected:', { fileName: file.name, fileType: file.type, fileSize: file.size });
+        console.log('📁 Uploading file...');
         
-        if (!user) {
-          console.log('❌ No user for file upload');
-          toast({ title: "Login required", description: "Please login to upload files." });
-          return;
+        // ULTRA SIMPLE PATH - no user folders, just public files
+        const fileId = crypto.randomUUID();
+        const bucket = file.type.startsWith("video/") ? "video-proofs" : "proofs";
+        const path = `public/${fileId}-${file.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(path, file, { upsert: false });
+        
+        if (uploadError) {
+          console.error('❌ Upload failed:', uploadError);
+          throw new Error(`Upload failed: ${uploadError.message}`);
         }
         
-        setIsUploading(true);
-        setUploadProgress(0);
+        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
         
-        // Upload to appropriate bucket based on file type
-        const isVideo = file.type.startsWith('video/');
-        const bucket = isVideo ? 'video-proofs' : 'proofs';
-        const submissionId = crypto.randomUUID();
-        const path = `${user.id}/${submissionId}/${file.name}`;
-        
-        console.log('☁️ Starting file upload:', { bucket, path, isVideo });
-        
-        const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { 
-          upsert: false,
-          contentType: file.type
-        });
-        
-        if (upErr) {
-          console.error('❌ File upload failed:', upErr);
-          throw upErr;
-        }
-        
-        console.log('✅ File uploaded successfully');
-        
-        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
-        
-        if (isVideo) {
-          videoUrl = pub.publicUrl;
+        if (file.type.startsWith("video/")) {
+          videoUrl = publicData.publicUrl;
         } else {
-          finalProofUrl = pub.publicUrl;
+          finalProofUrl = publicData.publicUrl;
         }
         
-        setUploadProgress(100);
-        setIsUploading(false);
+        console.log('✅ File uploaded');
       }
 
-      // Submit to leaderboards submissions
+      // ULTRA SIMPLE DATABASE INSERT
       const submissionData = {
         leaderboard_id: leaderboard.id,
-        user_id: user?.id || null, // Allow null for anonymous submissions
+        user_id: user?.id || null,
         full_name: data.fullName,
         email: data.email,
         gender: data.gender,
@@ -217,38 +201,43 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: finalProofUrl || null,
         video_url: videoUrl || null,
-        status: 'APPROVED' as const, // Changed to APPROVED instead of PENDING
+        status: 'APPROVED' as const,
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
-          original_input: data.value
+          original_input: valueToUse
         }
       };
       
-      console.log('💾 Submitting to database:', submissionData);
+      console.log('💾 INSERTING:', submissionData);
       
-      const { error: submitError } = await supabase.from("submissions").insert(submissionData);
+      const { data: insertResult, error: insertError } = await supabase
+        .from("submissions")
+        .insert(submissionData)
+        .select();
 
-      if (submitError) {
-        console.error('❌ Database submission failed:', submitError);
-        throw submitError;
+      if (insertError) {
+        console.error('❌ INSERT FAILED:', insertError);
+        throw new Error(`Database error: ${insertError.message} (${insertError.code})`);
       }
       
-      console.log('✅ Submission successful!');
+      console.log('✅ SUCCESS!', insertResult);
 
       toast({ 
-        title: "Submitted successfully!", 
-        description: "Submission received and added to the leaderboard!"
+        title: "Success!", 
+        description: "Submission added to leaderboard!" 
       });
       
       reset();
       setUploadProgress(0);
-    } catch (e: any) {
-      console.error('❌ Submission error:', e);
-      setIsUploading(false);
+    } catch (error: any) {
+      console.error('❌ SUBMISSION FAILED:', error);
       toast({ 
-        title: "Submission failed", 
-        description: e?.message ?? "Please check your input and try again" 
+        title: "Failed", 
+        description: error.message || "Unknown error",
+        variant: "destructive"
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
