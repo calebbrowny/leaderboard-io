@@ -25,6 +25,7 @@ export default function LeaderboardView() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [sampleSubmissions, setSampleSubmissions] = useState<LeaderboardSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
   const canonical = typeof window !== 'undefined' ? window.location.href : `https://example.com/leaderboard/${slug}`;
@@ -37,6 +38,7 @@ export default function LeaderboardView() {
 
   const loadLeaderboard = async () => {
     try {
+      // Load leaderboard details
       const { data, error } = await supabase
         .from('leaderboards')
         .select('*')
@@ -52,6 +54,33 @@ export default function LeaderboardView() {
       }
 
       setLeaderboard(data);
+      
+      // Load public submissions using the secure view that hides sensitive data
+      const { data: submissionsData, error: submissionsError } = await supabase
+        .from('public_submissions')
+        .select('*')
+        .eq('leaderboard_id', data.id)
+        .order('value_raw', { ascending: data.sort_direction === 'asc' });
+
+      if (submissionsError) {
+        console.error('Error loading submissions:', submissionsError);
+      } else if (submissionsData) {
+        // Transform the secure data to match the expected format
+        const transformedSubmissions = submissionsData.map(sub => ({
+          id: sub.id,
+          fullName: sub.display_name, // Now shows initials only for privacy
+          email: '', // Hidden for privacy
+          valueRaw: sub.value_raw,
+          valueDisplay: sub.value_display,
+          gender: sub.gender,
+          submittedAt: sub.submitted_at,
+          approvedAt: sub.approved_at || sub.submitted_at,
+          proofUrl: sub.proof_url || null,
+          videoUrl: sub.video_url || null
+        }));
+        
+        setSampleSubmissions(transformedSubmissions);
+      }
     } catch (error) {
       console.error('Error loading leaderboard:', error);
       navigate('/');
@@ -60,9 +89,6 @@ export default function LeaderboardView() {
     }
   };
 
-  // Sample data for now - will be replaced with real submissions
-  const sampleSubmissions: LeaderboardSubmission[] = [];
-  
   const computeStats = (subs: LeaderboardSubmission[], sortDirection: SortDirection): Stats => {
     const total = subs.length;
     const approved = subs.length;
@@ -83,6 +109,7 @@ export default function LeaderboardView() {
     return { total, approved, bestDisplay, avgDisplay, lastUpdated };
   };
 
+  // Remove the static sample data and use dynamic submissions
   const stats = useMemo(() => {
     if (!leaderboard) return { total: 0, approved: 0, bestDisplay: null, avgDisplay: null, lastUpdated: null };
     return computeStats(sampleSubmissions, leaderboard.sort_direction as SortDirection);
