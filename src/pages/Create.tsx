@@ -270,20 +270,6 @@ export default function Create() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="logo">Logo (optional)</Label>
-                <Input
-                  id="logo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                />
-                {logoFile && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Selected: {logoFile.name} ({(logoFile.size / 1024 / 1024).toFixed(1)} MB)
-                  </p>
-                )}
-              </div>
             </div>
           </Card>
 
