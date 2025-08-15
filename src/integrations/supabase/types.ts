@@ -282,7 +282,56 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_submissions: {
+        Row: {
+          approved_at: string | null
+          display_name: string | null
+          gender: Database["public"]["Enums"]["gender"] | null
+          id: string | null
+          leaderboard_id: string | null
+          proof_url: string | null
+          status: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at: string | null
+          value_display: string | null
+          value_raw: number | null
+          video_url: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          display_name?: never
+          gender?: Database["public"]["Enums"]["gender"] | null
+          id?: string | null
+          leaderboard_id?: string | null
+          proof_url?: string | null
+          status?: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at?: string | null
+          value_display?: string | null
+          value_raw?: number | null
+          video_url?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          display_name?: never
+          gender?: Database["public"]["Enums"]["gender"] | null
+          id?: string | null
+          leaderboard_id?: string | null
+          proof_url?: string | null
+          status?: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at?: string | null
+          value_display?: string | null
+          value_raw?: number | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_leaderboard_id_fkey"
+            columns: ["leaderboard_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_leaderboard_stats: {
