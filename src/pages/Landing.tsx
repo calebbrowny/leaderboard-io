@@ -27,6 +27,35 @@ export default function Landing() {
         <link rel="canonical" href={canonical} />
       </Helmet>
 
+      {/* Header Navigation */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-8 h-8 text-primary" />
+              <span className="text-xl font-bold">LeaderStack</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {user ? (
+                <Button onClick={() => navigate('/dashboard')} variant="default">
+                  Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button onClick={() => navigate('/auth')} variant="ghost">
+                    Sign In
+                  </Button>
+                  <Button onClick={() => navigate('/auth')} variant="default">
+                    Get Started
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
         <div className="container">
