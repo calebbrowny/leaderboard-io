@@ -31,6 +31,7 @@ export default function Create() {
     unit: "",
     sortDirection: "desc" as SortDirection,
     rules: "",
+    prizes: "",
     smart_time_parsing: true,
     submissions_per_user: null as number | null,
     end_date: null as string | null,
@@ -141,6 +142,7 @@ export default function Create() {
           sort_direction: formData.sortDirection,
           unit: formData.unit || null,
           rules: formData.rules || null,
+          prizes: formData.prizes || null,
           owner_user_id: user.id,
           smart_time_parsing: formData.smart_time_parsing,
           submissions_per_user: formData.submissions_per_user,
@@ -394,6 +396,27 @@ export default function Create() {
                 placeholder="Define the rules, submission requirements, deadlines, and any other important guidelines..."
                 rows={4}
               />
+            </div>
+          </Card>
+
+          {/* Prizes */}
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              Prizes (optional)
+            </h2>
+            <div>
+              <Label htmlFor="prizes">Prize Information</Label>
+              <Textarea
+                id="prizes"
+                value={formData.prizes || ""}
+                onChange={(e) => handleInputChange('prizes', e.target.value)}
+                placeholder="Describe the prizes, rewards, or recognition for winners (e.g., 1st place: $500, 2nd place: $250, 3rd place: $100)..."
+                rows={3}
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Optional: Add details about what participants can win or achieve
+              </p>
             </div>
           </Card>
 
