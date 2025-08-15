@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Video } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 type MetricType = "time" | "reps" | "distance" | "weight";
 
@@ -108,6 +109,7 @@ function parseToRawSmart(metric: MetricType, v: string, smartParsing: boolean): 
 }
 
 export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: LeaderboardMeta }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -160,6 +162,15 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
   };
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
+    if (!user) {
+      toast({ 
+        title: "Login required", 
+        description: "Please sign in before submitting.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     try {
       console.log('🚀 SUBMISSION WITH VIDEO:', { leaderboard: leaderboard.id, hasVideo: !!selectedFile });
       
@@ -174,10 +185,10 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         console.log('📹 Uploading video...');
         setUploadProgress(0);
         
-        // Create unique file path for anonymous uploads
+        // Create unique file path for user-scoped uploads
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `anonymous/${fileName}`;
+        const filePath = `${user.id}/${fileName}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('proofs')
@@ -205,7 +216,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
       // Database insert with video URL
       const submissionData = {
         leaderboard_id: leaderboard.id,
-        user_id: null, // Anonymous submission for now
+        user_id: user.id,
         full_name: data.fullName,
         email: data.email,
         gender: data.gender,
@@ -213,7 +224,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: data.proofUrl || null,
         video_url: videoUrl,
-        status: 'APPROVED' as const,
+        status: 'PENDING' as const,
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value,
@@ -364,11 +375,12 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
               <Input 
                 type="file"
                 accept="video/*"
+                disabled={!user}
                 onChange={handleFileChange}
                 className="cursor-pointer"
               />
               <p className="text-xs text-muted-foreground">
-                Upload a video to support your submission (max 50MB)
+                {user ? "Upload a video to support your submission (max 50MB)" : "Login required to upload videos"}
               </p>
             </div>
 
@@ -427,10 +439,10 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
           <div className="flex justify-end pt-4">
           <Button 
             type="submit" 
-            disabled={isSubmitting} 
+            disabled={isSubmitting || !user} 
             className="min-w-[120px]"
           >
-            {isSubmitting ? "Submitting..." : "Submit Entry"}
+            {!user ? "Login Required" : isSubmitting ? "Submitting..." : "Submit Entry"}
           </Button>
           </div>
         </form>

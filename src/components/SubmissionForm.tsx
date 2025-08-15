@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type MetricType = "time" | "reps" | "distance" | "weight";
 
@@ -69,6 +70,7 @@ function parseToRaw(metric: MetricType, v: string): { raw: number; display: stri
 }
 
 export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const {
     register,
@@ -79,14 +81,23 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
   } = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { gender: "male" } });
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
+    if (!user) {
+      toast({ 
+        title: "Login required", 
+        description: "Please sign in before submitting.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     try {
       const { raw, display } = parseToRaw(challenge.metricType, data.value);
 
       let finalProofUrl = data.proofUrl || "";
       const file = (data as any).proofFile as File | undefined;
       if (file) {
-        // Use anonymous folder structure for file uploads
-        const path = `anonymous/${Date.now()}_${file.name}`;
+        // Use user-scoped folder structure for file uploads
+        const path = `${user.id}/${Date.now()}_${file.name}`;
         const { error: upErr } = await supabase.storage.from("proofs").upload(path, file, { upsert: false });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from("proofs").getPublicUrl(path);
@@ -96,7 +107,7 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
       // Save to submissions table (assuming challenge.id maps to leaderboard_id)
       const submissionData = {
         leaderboard_id: challenge.id,
-        user_id: null, // Anonymous submission
+        user_id: user.id,
         full_name: data.fullName,
         email: data.email,
         gender: data.gender,
@@ -187,8 +198,15 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Or upload proof file</label>
-              <Input type="file" accept="image/*,video/*" {...register("proofFile")} />
-              <p className="text-xs text-muted-foreground mt-1">Login required to upload. Files are stored securely.</p>
+              <Input 
+                type="file" 
+                accept="image/*,video/*" 
+                disabled={!user}
+                {...register("proofFile")} 
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {user ? "Files are stored securely." : "Login required to upload files."}
+              </p>
             </div>
           </div>
 
@@ -207,7 +225,13 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
           {errors.accept && <p className="text-sm text-destructive mt-1">{errors.accept.message}</p>}
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting} className="hover-scale">Submit</Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !user} 
+              className="hover-scale"
+            >
+              {!user ? "Login Required" : isSubmitting ? "Submitting..." : "Submit"}
+            </Button>
           </div>
         </form>
       </Card>
