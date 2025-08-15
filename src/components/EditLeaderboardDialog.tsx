@@ -38,6 +38,13 @@ export function EditLeaderboardDialog({ leaderboard, onUpdate, children }: EditL
     unit: leaderboard.unit || "",
   });
 
+  // Time input state for dropdown-based time entry
+  const [timeInput, setTimeInput] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -115,10 +122,10 @@ export function EditLeaderboardDialog({ leaderboard, onUpdate, children }: EditL
               <div>
                 <Label htmlFor="metric_type">Metric Type</Label>
                 <Select value={formData.metric_type} onValueChange={(value) => setFormData(prev => ({ ...prev, metric_type: value as any }))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background z-50">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background border z-50">
                     <SelectItem value="reps">Number/Count/Reps</SelectItem>
                     <SelectItem value="time">Time Duration</SelectItem>
                     <SelectItem value="distance">Distance</SelectItem>
@@ -137,6 +144,59 @@ export function EditLeaderboardDialog({ leaderboard, onUpdate, children }: EditL
                 />
               </div>
             </div>
+
+            {/* Time-based input system when Time Duration is selected */}
+            {formData.metric_type === 'time' && (
+              <div className="space-y-3">
+                <Label>Time Entry Format</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor="hours" className="text-sm">Hours</Label>
+                    <Select value={timeInput.hours.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, hours: parseInt(value) }))}>
+                      <SelectTrigger className="bg-background z-50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50 max-h-48">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <SelectItem key={i} value={i.toString()}>{i}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="minutes" className="text-sm">Minutes</Label>
+                    <Select value={timeInput.minutes.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, minutes: parseInt(value) }))}>
+                      <SelectTrigger className="bg-background z-50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50 max-h-48">
+                        {Array.from({ length: 60 }, (_, i) => (
+                          <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="seconds" className="text-sm">Seconds</Label>
+                    <Select value={timeInput.seconds.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, seconds: parseInt(value) }))}>
+                      <SelectTrigger className="bg-background z-50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50 max-h-48">
+                        {Array.from({ length: 60 }, (_, i) => (
+                          <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Users will enter times using dropdown selectors instead of typing
+                </p>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="sort_direction">Ranking Order</Label>

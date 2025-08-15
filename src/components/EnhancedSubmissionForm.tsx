@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Video, Clock, AlertCircle } from "lucide-react";
+import { Label } from "@/components/ui/label";
 type MetricType = "time" | "reps" | "distance" | "weight";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -115,6 +116,13 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Time input state for dropdown-based time entry
+  const [timeInput, setTimeInput] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+  
   const {
     register,
     handleSubmit,
@@ -135,7 +143,14 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
-      const { raw, display } = parseToRawSmart(leaderboard.metricType, data.value, leaderboard.smartTimeParsing);
+      // For time-based leaderboards, use dropdown values instead of typed input
+      let valueToUse = data.value;
+      if (leaderboard.metricType === 'time') {
+        // Convert dropdown time to string format for parsing
+        valueToUse = `${timeInput.hours}:${timeInput.minutes.toString().padStart(2, '0')}:${timeInput.seconds.toString().padStart(2, '0')}`;
+      }
+      
+      const { raw, display } = parseToRawSmart(leaderboard.metricType, valueToUse, leaderboard.smartTimeParsing);
 
       let finalProofUrl = data.proofUrl || "";
       let videoUrl = "";
@@ -288,24 +303,82 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
             </div>
             
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                Result ({leaderboard.units || leaderboard.metricType}) *
-                {leaderboard.smartTimeParsing && leaderboard.metricType === "time" && (
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                )}
-              </label>
-              <Input 
-                placeholder={leaderboard.metricType === "time" ? getTimeInputPlaceholder() : "Enter value"} 
-                aria-invalid={!!errors.value} 
-                {...register("value")} 
-              />
-              {leaderboard.smartTimeParsing && leaderboard.metricType === "time" && (
-                <p className="text-xs text-muted-foreground">
-                  Smart parsing enabled: accepts various time formats
-                </p>
-              )}
-              {errors.value && <p className="text-sm text-destructive">{errors.value.message}</p>}
+            <div className="grid gap-4">
+              {leaderboard.metricType === 'time' ? (
+                // Dropdown-based time entry
+                <div className="space-y-3">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    Time Result *
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="hours" className="text-xs">Hours</Label>
+                      <Select value={timeInput.hours.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, hours: parseInt(value) }))}>
+                        <SelectTrigger className="bg-background z-50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50 max-h-48">
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>{i}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="minutes" className="text-xs">Minutes</Label>
+                      <Select value={timeInput.minutes.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, minutes: parseInt(value) }))}>
+                        <SelectTrigger className="bg-background z-50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50 max-h-48">
+                          {Array.from({ length: 60 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="seconds" className="text-xs">Seconds</Label>
+                      <Select value={timeInput.seconds.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, seconds: parseInt(value) }))}>
+                        <SelectTrigger className="bg-background z-50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50 max-h-48">
+                          {Array.from({ length: 60 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select your time from the dropdown menus
+                  </p>
+                  {/* Hidden input to satisfy form validation */}
+                  <input type="hidden" {...register("value")} value={`${timeInput.hours}:${timeInput.minutes}:${timeInput.seconds}`} />
+                </div>
+              ) : (
+                // Regular text input for non-time metrics
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    Result ({leaderboard.units || leaderboard.metricType}) *
+                  </label>
+                  <Input 
+                    placeholder="Enter value" 
+                    aria-invalid={!!errors.value} 
+                    {...register("value")} 
+                  />
+                  {errors.value && (
+                    <p className="text-sm text-destructive mt-1">{errors.value.message}</p>
+                  )}
+                </div>
+               )}
+               {errors.value && <p className="text-sm text-destructive">{errors.value.message}</p>}
             </div>
+          </div>
           </div>
 
           <div className="space-y-4">
