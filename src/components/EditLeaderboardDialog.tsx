@@ -50,7 +50,9 @@ export function EditLeaderboardDialog({ leaderboard, onUpdate, children }: EditL
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      console.log('Updating leaderboard:', leaderboard.id, formData);
+      
+      const { data, error } = await supabase
         .from('leaderboards')
         .update({
           title: formData.title,
@@ -60,8 +62,11 @@ export function EditLeaderboardDialog({ leaderboard, onUpdate, children }: EditL
           sort_direction: formData.sort_direction,
           unit: formData.unit || null,
         })
-        .eq('id', leaderboard.id);
+        .eq('id', leaderboard.id)
+        .select();
 
+      console.log('Update result:', { data, error });
+      
       if (error) throw error;
 
       toast({

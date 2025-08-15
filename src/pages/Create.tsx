@@ -31,8 +31,6 @@ export default function Create() {
     unit: "",
     sortDirection: "desc" as SortDirection,
     rules: "",
-    requires_verification: true,
-    auto_approve: false,
     smart_time_parsing: true,
     submissions_per_user: null as number | null,
     end_date: null as string | null,
@@ -144,8 +142,6 @@ export default function Create() {
           unit: formData.unit || null,
           rules: formData.rules || null,
           owner_user_id: user.id,
-          requires_verification: formData.requires_verification,
-          auto_approve: formData.auto_approve,
           smart_time_parsing: formData.smart_time_parsing,
           submissions_per_user: formData.submissions_per_user,
           end_date: formData.end_date,
@@ -336,48 +332,10 @@ export default function Create() {
           {/* Submission Settings */}
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Submission & Verification Settings
+              <Zap className="w-5 h-5" />
+              Submission Settings
             </h2>
             <div className="space-y-6">
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="requires_verification"
-                  checked={formData.requires_verification}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, requires_verification: Boolean(checked) }))
-                  }
-                />
-                <div>
-                  <Label htmlFor="requires_verification" className="text-sm font-medium">
-                    Require submission verification
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Submissions will need approval before appearing on the leaderboard
-                  </p>
-                </div>
-              </div>
-
-              {formData.requires_verification && (
-                <div className="flex items-start space-x-3 ml-6">
-                  <Checkbox
-                    id="auto_approve"
-                    checked={formData.auto_approve}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, auto_approve: Boolean(checked) }))
-                    }
-                  />
-                  <div>
-                    <Label htmlFor="auto_approve" className="text-sm font-medium">
-                      Auto-approve submissions
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically approve submissions that meet basic criteria
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {formData.metricType === 'time' && (
                 <div className="flex items-start space-x-3">
                   <Checkbox
@@ -413,6 +371,12 @@ export default function Create() {
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   Limit how many times each person can submit
+                </p>
+              </div>
+              
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Auto-approval enabled:</strong> All submissions will appear immediately on the leaderboard without requiring manual approval.
                 </p>
               </div>
             </div>

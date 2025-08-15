@@ -42,14 +42,19 @@ export default function Auth() {
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
       if (error) throw error;
+      
+      // Success - redirect will happen via onAuthStateChange
+      console.log('Sign in successful:', data);
     } catch (err: any) {
+      console.error('Sign in error:', err);
       // If user doesn't exist, suggest signing up
-      if (err?.message?.includes("Invalid login credentials")) {
+      if (err?.message?.includes("Invalid login credentials") || err?.message?.includes("Email not confirmed")) {
         toast({ 
           title: "Account not found", 
           description: "No account found with these credentials. Would you like to sign up instead?" 
@@ -82,7 +87,7 @@ export default function Auth() {
     try {
       setLoading(true);
       const redirectTo = `${window.location.origin}/dashboard`;
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -94,8 +99,25 @@ export default function Auth() {
       });
       
       if (error) throw error;
-      toast({ title: "Success", description: "Check your email to confirm your account" });
+      
+      // Create profile for the user
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            display_name: name,
+          });
+        
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        }
+      }
+      
+      toast({ title: "Success", description: "Account created successfully! You can now sign in." });
+      setActiveTab("signin");
     } catch (err: any) {
+      console.error('Sign up error:', err);
       // If user already exists, redirect to sign in
       if (err?.message?.includes("User already registered")) {
         toast({ 
