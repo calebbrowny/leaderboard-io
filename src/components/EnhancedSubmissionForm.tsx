@@ -174,13 +174,13 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         console.log('📹 Uploading video...');
         setUploadProgress(0);
         
-        // Create unique file path
+        // Create unique file path for anonymous uploads
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `submissions/${fileName}`;
+        const filePath = `anonymous/${fileName}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('video-proofs')
+          .from('proofs')
           .upload(filePath, selectedFile, {
             cacheControl: '3600',
             upsert: false
@@ -195,7 +195,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-          .from('video-proofs')
+          .from('proofs')
           .getPublicUrl(filePath);
         
         videoUrl = publicUrl;

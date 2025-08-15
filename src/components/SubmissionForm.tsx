@@ -85,25 +85,54 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
       let finalProofUrl = data.proofUrl || "";
       const file = (data as any).proofFile as File | undefined;
       if (file) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const user = sessionData.session?.user;
-        if (!user) {
-          toast({ title: "Login required", description: "Please login to upload files." });
-          return;
-        }
-        const path = `${user.id}/${Date.now()}_${file.name}`;
+        // Use anonymous folder structure for file uploads
+        const path = `anonymous/${Date.now()}_${file.name}`;
         const { error: upErr } = await supabase.storage.from("proofs").upload(path, file, { upsert: false });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from("proofs").getPublicUrl(path);
         finalProofUrl = pub.publicUrl;
       }
 
-      // Placeholder: pending Supabase integration for saving
-      console.log("submission", { ...data, proofUrl: finalProofUrl, valueRaw: raw, valueDisplay: display, challengeId: challenge.id });
-      toast({ title: "Submitted!", description: "Pending approval." });
+      // Save to submissions table (assuming challenge.id maps to leaderboard_id)
+      const submissionData = {
+        leaderboard_id: challenge.id,
+        user_id: null, // Anonymous submission
+        full_name: data.fullName,
+        email: data.email,
+        gender: data.gender,
+        value_raw: raw,
+        value_display: display,
+        proof_url: finalProofUrl || null,
+        status: 'PENDING' as const,
+        submission_metadata: {
+          source: 'basic_form',
+          original_input: data.value
+        }
+      };
+
+      const { data: insertResult, error: insertError } = await supabase
+        .from("submissions")
+        .insert(submissionData)
+        .select();
+
+      if (insertError) {
+        console.error('Submission insert failed:', insertError);
+        throw new Error(`Failed to save submission: ${insertError.message}`);
+      }
+
+      console.log("✅ Submission saved:", insertResult);
+      toast({ 
+        title: "Submitted!", 
+        description: "Your submission has been saved and is pending approval." 
+      });
       reset();
     } catch (e: any) {
-      toast({ title: "Invalid result", description: e?.message ?? "Please check your input" });
+      console.error('Submission error:', e);
+      toast({ 
+        title: "Submission failed", 
+        description: e?.message ?? "Please check your input and try again",
+        variant: "destructive"
+      });
     }
   };
 
