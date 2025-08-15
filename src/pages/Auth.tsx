@@ -24,11 +24,33 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // Recovery flow states
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   useEffect(() => {
+    // Check for recovery tokens in URL hash
+    const handleRecoveryTokens = () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      if (accessToken && type === 'recovery') {
+        console.log('Recovery tokens detected, entering recovery mode');
+        setIsRecoveryMode(true);
+        // Clean up URL immediately
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        return;
+      }
+    };
+
+    handleRecoveryTokens();
+
     // Check current session first
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+      if (session?.user && !isRecoveryMode) {
         console.log('User already logged in, redirecting to dashboard');
         navigate("/dashboard", { replace: true });
       }
@@ -36,13 +58,13 @@ export default function Auth() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.email);
-      if (session?.user) {
+      if (session?.user && !isRecoveryMode) {
         console.log('User logged in, redirecting to dashboard');
         navigate("/dashboard", { replace: true });
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isRecoveryMode]);
 
   const signInWithEmail = async () => {
     if (!email || !password) {
@@ -66,19 +88,10 @@ export default function Auth() {
       
       // Handle different error types
       if (err?.message?.includes("Invalid login credentials")) {
-        // Check if this might be an unconfirmed email issue
-        if (email.includes('@')) {
-          toast({ 
-            title: "Login failed", 
-            description: "Invalid email or password. If you just signed up, please check your email for confirmation first." 
-          });
-        } else {
-          toast({ 
-            title: "Account not found", 
-            description: "No account found with these credentials. Would you like to sign up instead?" 
-          });
-          setActiveTab("signup");
-        }
+        toast({ 
+          title: "Wrong password", 
+          description: "Invalid email or password. Please check your credentials and try again." 
+        });
         return;
       }
       
@@ -194,11 +207,54 @@ export default function Auth() {
     }
   };
 
+  const updatePassword = async () => {
+    if (!newPassword || !confirmNewPassword) {
+      toast({ title: "Error", description: "Please fill in all fields" });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Error", description: "Passwords do not match" });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({ title: "Error", description: "Password must be at least 6 characters" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: "Success", 
+        description: "Password updated successfully! You are now logged in." 
+      });
+      
+      // Exit recovery mode and redirect will happen via auth state change
+      setIsRecoveryMode(false);
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (err: any) {
+      console.error('Password update error:', err);
+      toast({ title: "Update failed", description: err?.message ?? "Please try again" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const clearForm = () => {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
     setName("");
+    setNewPassword("");
+    setConfirmNewPassword("");
   };
 
   return (
@@ -219,7 +275,45 @@ export default function Auth() {
             <CardDescription>Enter your details to continue</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {showForgotPassword ? (
+            {isRecoveryMode ? (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold">Set New Password</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your new password below
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                  <Input
+                    id="confirm-new-password"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={loading}
+                  />
+                </div>
+                <Button 
+                  onClick={updatePassword} 
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Update Password"}
+                </Button>
+              </div>
+            ) : showForgotPassword ? (
               <div className="space-y-4">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold">Reset Password</h3>
