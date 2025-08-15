@@ -5,11 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Users, BarChart3, Zap, Star, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function Landing() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const canonical = typeof window !== 'undefined' ? window.location.href : 'https://example.com';
+
+  // Redirect authenticated users to dashboard and clean up OAuth tokens
+  useEffect(() => {
+    if (user && !loading) {
+      // Clean up OAuth hash fragments if present
+      if (window.location.hash.includes('access_token')) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleGetStarted = () => {
     if (user) {
