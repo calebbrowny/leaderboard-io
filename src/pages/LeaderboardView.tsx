@@ -18,6 +18,7 @@ interface Leaderboard {
   sort_direction: string;
   unit: string;
   rules: string;
+  prizes?: string;
   created_at: string;
   logo_url?: string;
   smart_time_parsing: boolean;
@@ -195,6 +196,14 @@ export default function LeaderboardView() {
             <EnhancedSubmissionForm leaderboard={leaderboardMeta} />
           </Card>
         </div>
+
+        {/* Prizes */}
+        {leaderboard.prizes && (
+          <Card className="p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4">Prizes & Rewards</h2>
+            <p className="text-muted-foreground whitespace-pre-wrap">{leaderboard.prizes}</p>
+          </Card>
+        )}
 
         {/* Rules */}
         {leaderboard.rules && (
