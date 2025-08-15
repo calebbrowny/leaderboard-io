@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload } from "lucide-react";
+import { Upload, Video } from "lucide-react";
+import { useState } from "react";
 
 type MetricType = "time" | "reps" | "distance" | "weight";
 
@@ -30,6 +31,7 @@ const schema = z
     gender: z.enum(["male", "female", "other"]),
     value: z.string().min(1, "Please enter your result"),
     proofUrl: z.string().url().optional().or(z.literal("")),
+    videoFile: z.instanceof(File).optional(),
     accept: z.boolean().refine((v) => v === true, "You must accept the rules & terms"),
     website: z.string().optional(), // honeypot
   })
@@ -107,12 +109,16 @@ function parseToRawSmart(metric: MetricType, v: string, smartParsing: boolean): 
 
 export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: LeaderboardMeta }) {
   const { toast } = useToast();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({ 
     resolver: zodResolver(schema), 
@@ -121,15 +127,82 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
     }
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('video/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a video file",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Validate file size (50MB limit)
+      if (file.size > 50 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Video must be under 50MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+      setValue('videoFile', file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setVideoPreviewUrl(previewUrl);
+    }
+  };
+
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
-      console.log('🚀 SIMPLE SUBMISSION:', { leaderboard: leaderboard.id });
+      console.log('🚀 SUBMISSION WITH VIDEO:', { leaderboard: leaderboard.id, hasVideo: !!selectedFile });
       
       // Parse the value using smart parsing
       const { raw, display } = parseToRawSmart(leaderboard.metricType, data.value, leaderboard.smartTimeParsing);
       console.log('✅ Value parsed:', { raw, display });
 
-      // Simple database insert
+      let videoUrl = null;
+
+      // Upload video if provided
+      if (selectedFile) {
+        console.log('📹 Uploading video...');
+        setUploadProgress(0);
+        
+        // Create unique file path
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `submissions/${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('video-proofs')
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('❌ VIDEO UPLOAD FAILED:', uploadError);
+          throw new Error(`Video upload failed: ${uploadError.message}`);
+        }
+
+        console.log('✅ Video uploaded:', uploadData);
+        
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('video-proofs')
+          .getPublicUrl(filePath);
+        
+        videoUrl = publicUrl;
+        setUploadProgress(100);
+      }
+
+      // Database insert with video URL
       const submissionData = {
         leaderboard_id: leaderboard.id,
         user_id: null, // Anonymous submission for now
@@ -139,10 +212,12 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_raw: raw,
         value_display: display,
         proof_url: data.proofUrl || null,
+        video_url: videoUrl,
         status: 'APPROVED' as const,
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
-          original_input: data.value
+          original_input: data.value,
+          has_video: !!videoUrl
         }
       };
       
@@ -162,10 +237,15 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
       toast({ 
         title: "Success!", 
-        description: "Submission added to leaderboard!" 
+        description: `Submission added to leaderboard!${videoUrl ? ' Video uploaded successfully.' : ''}` 
       });
       
+      // Reset form and states
       reset();
+      setSelectedFile(null);
+      setVideoPreviewUrl(null);
+      setUploadProgress(0);
+      
     } catch (error: any) {
       console.error('❌ SUBMISSION FAILED:', error);
       toast({ 
@@ -173,6 +253,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         description: error.message || "Unknown error",
         variant: "destructive"
       });
+      setUploadProgress(0);
     }
   };
 
@@ -272,6 +353,54 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
             <p className="text-xs text-muted-foreground">
               Add a link to verify your result (YouTube, Strava, etc.)
             </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Video Proof (optional)
+              </label>
+              <Input 
+                type="file"
+                accept="video/*"
+                onChange={handleFileChange}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">
+                Upload a video to support your submission (max 50MB)
+              </p>
+            </div>
+
+            {selectedFile && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Selected: {selectedFile.name}</span>
+                  <span>{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+                </div>
+                
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {videoPreviewUrl && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Preview:</p>
+                <video 
+                  src={videoPreviewUrl} 
+                  controls 
+                  className="w-full max-w-md rounded-lg border"
+                  style={{ maxHeight: '200px' }}
+                />
+              </div>
+            )}
           </div>
 
           <Controller
