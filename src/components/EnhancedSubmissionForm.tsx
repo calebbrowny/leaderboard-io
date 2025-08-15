@@ -21,7 +21,6 @@ export interface LeaderboardMeta {
   metricType: MetricType;
   units?: string | null;
   smartTimeParsing: boolean;
-  requiresVerification: boolean;
 }
 
 const schema = z
@@ -201,7 +200,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: finalProofUrl || null,
         video_url: videoUrl || null,
-        status: 'PENDING',
+        status: 'APPROVED',
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value
@@ -210,13 +209,9 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
       if (submitError) throw submitError;
 
-      const statusMessage = leaderboard.requiresVerification 
-        ? "Submission received! It will appear on the leaderboard once approved."
-        : "Submission received and added to the leaderboard!";
-
       toast({ 
         title: "Submitted successfully!", 
-        description: statusMessage 
+        description: "Submission received and added to the leaderboard!"
       });
       
       reset();
@@ -245,12 +240,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
           Submit to {leaderboard.title}
         </CardTitle>
         <CardDescription>
-          {leaderboard.requiresVerification && (
-            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded">
-              <AlertCircle className="h-4 w-4" />
-              Submissions require manual approval
-            </div>
-          )}
+          Submit your result to join the leaderboard
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -9,7 +9,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { SubmissionManagement } from "@/components/SubmissionManagement";
+import { EnhancedSubmissionManagement } from "@/components/EnhancedSubmissionManagement";
 import { EditLeaderboardDialog } from "@/components/EditLeaderboardDialog";
 import { ConfigureSubmissionDialog } from "@/components/ConfigureSubmissionDialog";
 
@@ -24,8 +24,6 @@ interface Leaderboard {
   rules?: string;
   owner_user_id: string;
   created_at: string;
-  requires_verification: boolean;
-  auto_approve: boolean;
   smart_time_parsing: boolean;
   submissions_per_user?: number;
   end_date?: string;
@@ -328,14 +326,7 @@ export default function Manage() {
                 <div><span className="text-muted-foreground">Metric Type:</span> {leaderboard.metric_type}</div>
                 <div><span className="text-muted-foreground">Unit:</span> {leaderboard.unit || "None"}</div>
                 <div><span className="text-muted-foreground">Sort Direction:</span> {leaderboard.sort_direction === 'desc' ? 'Highest wins' : 'Lowest wins'}</div>
-                <div>
-                  <span className="text-muted-foreground">Verification:</span>{' '}
-                  {leaderboard.requires_verification ? (
-                    <Badge variant="secondary">Manual approval required</Badge>
-                  ) : (
-                    <Badge variant="default">Auto-approved</Badge>
-                  )}
-                </div>
+                <div><span className="text-muted-foreground">Status:</span> Auto-approved</div>
                 {leaderboard.smart_time_parsing && leaderboard.metric_type === 'time' && (
                   <div><span className="text-muted-foreground">Smart Time Parsing:</span> Enabled</div>
                 )}
@@ -360,7 +351,12 @@ export default function Manage() {
           </TabsList>
 
           <TabsContent value="submissions">
-            <SubmissionManagement leaderboardId={leaderboard.id} />
+                <EnhancedSubmissionManagement 
+                  leaderboardId={leaderboard.id}
+                  metricType={leaderboard.metric_type}
+                  unit={leaderboard.unit}
+                  sortDirection={leaderboard.sort_direction}
+                />
           </TabsContent>
 
           <TabsContent value="participants">

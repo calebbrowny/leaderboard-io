@@ -73,7 +73,6 @@ export type Database = {
       }
       leaderboards: {
         Row: {
-          auto_approve: boolean
           created_at: string
           custom_domain: string | null
           description: string | null
@@ -82,7 +81,6 @@ export type Database = {
           logo_url: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
-          requires_verification: boolean
           rules: string | null
           slug: string
           smart_time_parsing: boolean
@@ -93,7 +91,6 @@ export type Database = {
           unit: string | null
         }
         Insert: {
-          auto_approve?: boolean
           created_at?: string
           custom_domain?: string | null
           description?: string | null
@@ -102,7 +99,6 @@ export type Database = {
           logo_url?: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
-          requires_verification?: boolean
           rules?: string | null
           slug: string
           smart_time_parsing?: boolean
@@ -113,7 +109,6 @@ export type Database = {
           unit?: string | null
         }
         Update: {
-          auto_approve?: boolean
           created_at?: string
           custom_domain?: string | null
           description?: string | null
@@ -122,7 +117,6 @@ export type Database = {
           logo_url?: string | null
           metric_type?: Database["public"]["Enums"]["metric_type"]
           owner_user_id?: string
-          requires_verification?: boolean
           rules?: string | null
           slug?: string
           smart_time_parsing?: boolean
@@ -167,7 +161,9 @@ export type Database = {
           full_name: string
           gender: Database["public"]["Enums"]["gender"]
           id: string
+          is_manual_entry: boolean | null
           leaderboard_id: string
+          manual_rank: number | null
           notes: string | null
           proof_url: string | null
           rejection_reason: string | null
@@ -187,7 +183,9 @@ export type Database = {
           full_name: string
           gender: Database["public"]["Enums"]["gender"]
           id?: string
+          is_manual_entry?: boolean | null
           leaderboard_id: string
+          manual_rank?: number | null
           notes?: string | null
           proof_url?: string | null
           rejection_reason?: string | null
@@ -207,7 +205,9 @@ export type Database = {
           full_name?: string
           gender?: Database["public"]["Enums"]["gender"]
           id?: string
+          is_manual_entry?: boolean | null
           leaderboard_id?: string
+          manual_rank?: number | null
           notes?: string | null
           proof_url?: string | null
           rejection_reason?: string | null

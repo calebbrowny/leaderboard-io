@@ -20,7 +20,6 @@ interface Leaderboard {
   rules: string;
   created_at: string;
   logo_url?: string;
-  requires_verification: boolean;
   smart_time_parsing: boolean;
 }
 
@@ -140,7 +139,7 @@ export default function LeaderboardView() {
     title: leaderboard.title,
     metricType: leaderboard.metric_type as any,
     units: leaderboard.unit,
-    requiresVerification: leaderboard.requires_verification,
+    
     smartTimeParsing: leaderboard.smart_time_parsing,
   };
 
