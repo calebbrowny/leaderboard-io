@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SubmissionManagement } from "@/components/SubmissionManagement";
+import { EditLeaderboardDialog } from "@/components/EditLeaderboardDialog";
+import { ConfigureSubmissionDialog } from "@/components/ConfigureSubmissionDialog";
 
 interface Leaderboard {
   id: string;
@@ -147,6 +149,62 @@ export default function Manage() {
       title: "Link copied!", 
       description: "Leaderboard link copied to clipboard" 
     });
+  };
+
+  const exportData = async () => {
+    try {
+      const { data: submissions, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('leaderboard_id', leaderboard?.id);
+
+      if (error) throw error;
+
+      if (!submissions || submissions.length === 0) {
+        toast({
+          title: "No data to export",
+          description: "This leaderboard has no submissions yet.",
+        });
+        return;
+      }
+
+      // Convert to CSV
+      const headers = ['Name', 'Email', 'Gender', 'Result', 'Status', 'Submitted At', 'Approved At', 'Proof URL'];
+      const csvContent = [
+        headers.join(','),
+        ...submissions.map(sub => [
+          `"${sub.full_name}"`,
+          `"${sub.email}"`, 
+          sub.gender,
+          `"${sub.value_display}"`,
+          sub.status,
+          new Date(sub.submitted_at).toISOString(),
+          sub.approved_at ? new Date(sub.approved_at).toISOString() : '',
+          sub.proof_url || ''
+        ].join(','))
+      ].join('\n');
+
+      // Download file
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${leaderboard?.slug || 'leaderboard'}-submissions.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export successful",
+        description: "Your submission data has been downloaded as CSV.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export data. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (authLoading || loading || !leaderboard) {
@@ -342,7 +400,9 @@ export default function Manage() {
                       <h4 className="font-medium">Edit Details</h4>
                       <p className="text-sm text-muted-foreground">Update title, description, and rules</p>
                     </div>
-                    <Button variant="outline" size="sm">Edit</Button>
+                    <EditLeaderboardDialog leaderboard={leaderboard} onUpdate={loadLeaderboard}>
+                      <Button variant="outline" size="sm">Edit</Button>
+                    </EditLeaderboardDialog>
                   </div>
                   
                   <div className="flex items-center justify-between py-3 border-b">
@@ -350,7 +410,9 @@ export default function Manage() {
                       <h4 className="font-medium">Submission Settings</h4>
                       <p className="text-sm text-muted-foreground">Configure approval requirements and limits</p>
                     </div>
-                    <Button variant="outline" size="sm">Configure</Button>
+                    <ConfigureSubmissionDialog leaderboard={leaderboard} onUpdate={loadLeaderboard}>
+                      <Button variant="outline" size="sm">Configure</Button>
+                    </ConfigureSubmissionDialog>
                   </div>
                   
                   <div className="flex items-center justify-between py-3 border-b">
@@ -358,7 +420,13 @@ export default function Manage() {
                       <h4 className="font-medium">Export Data</h4>
                       <p className="text-sm text-muted-foreground">Download submissions and participant data</p>
                     </div>
-                    <Button variant="outline" size="sm">Export</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => exportData()}
+                    >
+                      Export CSV
+                    </Button>
                   </div>
                   
                   <div className="flex items-center justify-between py-3">
