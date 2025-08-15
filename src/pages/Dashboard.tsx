@@ -204,7 +204,7 @@ export default function Dashboard() {
               <p className="text-sm text-amber-800">
                 You've reached the free plan limit of {freeLimit} leaderboard. 
                 <Button variant="link" className="p-0 ml-1 h-auto text-amber-800" onClick={() => navigate('/pricing')}>
-                  Upgrade to Pro
+                  Upgrade to Pro 
                 </Button> 
                 for unlimited leaderboards.
               </p>
