@@ -32,7 +32,7 @@ export default function Auth() {
 
   useEffect(() => {
     // Check for recovery tokens in URL hash
-    const handleRecoveryTokens = () => {
+    const checkRecoveryMode = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const type = hashParams.get('type');
@@ -40,17 +40,16 @@ export default function Auth() {
       if (accessToken && type === 'recovery') {
         console.log('Recovery tokens detected, entering recovery mode');
         setIsRecoveryMode(true);
-        // Clean up URL immediately
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-        return;
+        return true;
       }
+      return false;
     };
 
-    handleRecoveryTokens();
+    const isRecovery = checkRecoveryMode();
 
     // Check current session first
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && !isRecoveryMode) {
+      if (session?.user && !isRecovery) {
         console.log('User already logged in, redirecting to dashboard');
         navigate("/dashboard", { replace: true });
       }
@@ -58,7 +57,15 @@ export default function Auth() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.email);
-      if (session?.user && !isRecoveryMode) {
+      
+      // If we're in recovery mode and now have a session, clean up the URL
+      if (isRecoveryMode && session?.user && event === 'TOKEN_REFRESHED') {
+        console.log('Recovery session established, cleaning URL');
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      }
+      
+      // Only redirect to dashboard if not in recovery mode
+      if (session?.user && !isRecoveryMode && event !== 'TOKEN_REFRESHED') {
         console.log('User logged in, redirecting to dashboard');
         navigate("/dashboard", { replace: true });
       }
