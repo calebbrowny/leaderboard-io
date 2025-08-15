@@ -81,6 +81,7 @@ export type Database = {
           logo_url: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
+          prizes: string | null
           rules: string | null
           slug: string
           smart_time_parsing: boolean
@@ -99,6 +100,7 @@ export type Database = {
           logo_url?: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
+          prizes?: string | null
           rules?: string | null
           slug: string
           smart_time_parsing?: boolean
@@ -117,6 +119,7 @@ export type Database = {
           logo_url?: string | null
           metric_type?: Database["public"]["Enums"]["metric_type"]
           owner_user_id?: string
+          prizes?: string | null
           rules?: string | null
           slug?: string
           smart_time_parsing?: boolean
