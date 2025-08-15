@@ -331,58 +331,6 @@ export default function Create() {
             </div>
           </Card>
 
-          {/* Submission Settings */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Submission Settings
-            </h2>
-            <div className="space-y-6">
-              {formData.metricType === 'time' && (
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="smart_time_parsing"
-                    checked={formData.smart_time_parsing}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, smart_time_parsing: Boolean(checked) }))
-                    }
-                  />
-                  <div>
-                    <Label htmlFor="smart_time_parsing" className="text-sm font-medium">
-                      Smart time parsing
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Accept various time formats like "12mins 30sec", "1h 30m", or "12:30"
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="submissions_per_user">Submissions per user (optional)</Label>
-                <Input
-                  id="submissions_per_user"
-                  type="number"
-                  min="1"
-                  value={formData.submissions_per_user || ""}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    submissions_per_user: e.target.value ? parseInt(e.target.value) : null 
-                  }))}
-                  placeholder="Leave empty for unlimited"
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Limit how many times each person can submit
-                </p>
-              </div>
-              
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Auto-approval enabled:</strong> All submissions will appear immediately on the leaderboard without requiring manual approval.
-                </p>
-              </div>
-            </div>
-          </Card>
 
           {/* Rules and Guidelines */}
           <Card className="p-6">
