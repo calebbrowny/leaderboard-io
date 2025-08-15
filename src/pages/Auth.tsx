@@ -26,8 +26,18 @@ export default function Auth() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    // Check current session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
+        console.log('User already logged in, redirecting to dashboard');
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.email);
+      if (session?.user) {
+        console.log('User logged in, redirecting to dashboard');
         navigate("/dashboard", { replace: true });
       }
     });
@@ -53,15 +63,33 @@ export default function Auth() {
       console.log('Sign in successful:', data);
     } catch (err: any) {
       console.error('Sign in error:', err);
-      // If user doesn't exist, suggest signing up
-      if (err?.message?.includes("Invalid login credentials") || err?.message?.includes("Email not confirmed")) {
-        toast({ 
-          title: "Account not found", 
-          description: "No account found with these credentials. Would you like to sign up instead?" 
-        });
-        setActiveTab("signup");
+      
+      // Handle different error types
+      if (err?.message?.includes("Invalid login credentials")) {
+        // Check if this might be an unconfirmed email issue
+        if (email.includes('@')) {
+          toast({ 
+            title: "Login failed", 
+            description: "Invalid email or password. If you just signed up, please check your email for confirmation first." 
+          });
+        } else {
+          toast({ 
+            title: "Account not found", 
+            description: "No account found with these credentials. Would you like to sign up instead?" 
+          });
+          setActiveTab("signup");
+        }
         return;
       }
+      
+      if (err?.message?.includes("Email not confirmed")) {
+        toast({ 
+          title: "Email not confirmed", 
+          description: "Please check your email and click the confirmation link before signing in." 
+        });
+        return;
+      }
+      
       toast({ title: "Sign in error", description: err?.message ?? "Please try again" });
     } finally {
       setLoading(false);
@@ -114,8 +142,14 @@ export default function Auth() {
         }
       }
       
-      toast({ title: "Success", description: "Account created successfully! You can now sign in." });
-      setActiveTab("signin");
+      console.log('Sign up successful, creating profile...');
+      toast({ 
+        title: "Success", 
+        description: "Account created successfully! Please check your email to confirm your account, then you can sign in." 
+      });
+      
+      // Don't auto-switch to signin since email confirmation is required
+      clearForm();
     } catch (err: any) {
       console.error('Sign up error:', err);
       // If user already exists, redirect to sign in
