@@ -142,6 +142,11 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
+      console.log('🚀 Starting submission process...', { 
+        user: user ? { id: user.id, email: user.email } : 'anonymous',
+        leaderboard: leaderboard.id 
+      });
+      
       // For time-based leaderboards, use dropdown values instead of typed input
       let valueToUse = data.value;
       if (leaderboard.metricType === 'time') {
@@ -149,14 +154,19 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         valueToUse = `${timeInput.hours}:${timeInput.minutes.toString().padStart(2, '0')}:${timeInput.seconds.toString().padStart(2, '0')}`;
       }
       
+      console.log('⏱️ Parsing value:', { valueToUse, metricType: leaderboard.metricType });
       const { raw, display } = parseToRawSmart(leaderboard.metricType, valueToUse, leaderboard.smartTimeParsing);
+      console.log('✅ Parsed successfully:', { raw, display });
 
       let finalProofUrl = data.proofUrl || "";
       let videoUrl = "";
       
       const file = (data as any).proofFile?.[0] as File | undefined;
       if (file) {
+        console.log('📁 File upload detected:', { fileName: file.name, fileType: file.type, fileSize: file.size });
+        
         if (!user) {
+          console.log('❌ No user for file upload');
           toast({ title: "Login required", description: "Please login to upload files." });
           return;
         }
@@ -170,12 +180,19 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         const submissionId = crypto.randomUUID();
         const path = `${user.id}/${submissionId}/${file.name}`;
         
+        console.log('☁️ Starting file upload:', { bucket, path, isVideo });
+        
         const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { 
           upsert: false,
           contentType: file.type
         });
         
-        if (upErr) throw upErr;
+        if (upErr) {
+          console.error('❌ File upload failed:', upErr);
+          throw upErr;
+        }
+        
+        console.log('✅ File uploaded successfully');
         
         const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
         
@@ -190,7 +207,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
       }
 
       // Submit to leaderboards submissions
-      const { error: submitError } = await supabase.from("submissions").insert({
+      const submissionData = {
         leaderboard_id: leaderboard.id,
         user_id: user?.id || null, // Allow null for anonymous submissions
         full_name: data.fullName,
@@ -200,14 +217,23 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: finalProofUrl || null,
         video_url: videoUrl || null,
-        status: 'PENDING', // Set to pending for review by leaderboard owners
+        status: 'APPROVED' as const, // Changed to APPROVED instead of PENDING
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value
         }
-      });
+      };
+      
+      console.log('💾 Submitting to database:', submissionData);
+      
+      const { error: submitError } = await supabase.from("submissions").insert(submissionData);
 
-      if (submitError) throw submitError;
+      if (submitError) {
+        console.error('❌ Database submission failed:', submitError);
+        throw submitError;
+      }
+      
+      console.log('✅ Submission successful!');
 
       toast({ 
         title: "Submitted successfully!", 
@@ -217,6 +243,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
       reset();
       setUploadProgress(0);
     } catch (e: any) {
+      console.error('❌ Submission error:', e);
       setIsUploading(false);
       toast({ 
         title: "Submission failed", 
