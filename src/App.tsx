@@ -8,6 +8,8 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Create from "./pages/Create";
 import Pricing from "./pages/Pricing";
+import Manage from "./pages/Manage";
+import LeaderboardView from "./pages/LeaderboardView";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -30,6 +32,8 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/create" element={<Create />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/manage/:slug" element={<Manage />} />
+              <Route path="/leaderboard/:slug" element={<LeaderboardView />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
