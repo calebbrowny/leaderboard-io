@@ -192,7 +192,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
       // Submit to leaderboards submissions
       const { error: submitError } = await supabase.from("submissions").insert({
         leaderboard_id: leaderboard.id,
-        user_id: user?.id,
+        user_id: user?.id || null, // Allow null for anonymous submissions
         full_name: data.fullName,
         email: data.email,
         gender: data.gender,
@@ -200,7 +200,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: finalProofUrl || null,
         video_url: videoUrl || null,
-        status: 'APPROVED',
+        status: 'PENDING', // Set to pending for review by leaderboard owners
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value
