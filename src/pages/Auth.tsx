@@ -22,7 +22,7 @@ export default function Auth() {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) {
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -31,7 +31,7 @@ export default function Auth() {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo = `${window.location.origin}/dashboard`;
       const { error } = await supabase.auth.signInWithOAuth({ 
         provider: "google", 
         options: { redirectTo } 
@@ -82,7 +82,7 @@ export default function Auth() {
 
     try {
       setLoading(true);
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo = `${window.location.origin}/dashboard`;
       const { error } = await supabase.auth.signUp({
         email,
         password,
