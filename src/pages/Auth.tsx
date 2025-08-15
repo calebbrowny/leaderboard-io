@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -15,9 +15,15 @@ export default function Auth() {
   const navigate = useNavigate();
   const canonical = typeof window !== 'undefined' ? window.location.href : 'https://example.com/auth';
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
+  
+  // Form states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -27,22 +33,6 @@ export default function Auth() {
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
-
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      const redirectTo = `${window.location.origin}/dashboard`;
-      const { error } = await supabase.auth.signInWithOAuth({ 
-        provider: "google", 
-        options: { redirectTo } 
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      toast({ title: "Authentication error", description: err?.message ?? "Please try again" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const signInWithEmail = async () => {
     if (!email || !password) {
@@ -58,6 +48,15 @@ export default function Auth() {
       });
       if (error) throw error;
     } catch (err: any) {
+      // If user doesn't exist, suggest signing up
+      if (err?.message?.includes("Invalid login credentials")) {
+        toast({ 
+          title: "Account not found", 
+          description: "No account found with these credentials. Would you like to sign up instead?" 
+        });
+        setActiveTab("signup");
+        return;
+      }
       toast({ title: "Sign in error", description: err?.message ?? "Please try again" });
     } finally {
       setLoading(false);
@@ -65,7 +64,7 @@ export default function Auth() {
   };
 
   const signUpWithEmail = async () => {
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !name) {
       toast({ title: "Error", description: "Please fill in all fields" });
       return;
     }
@@ -87,23 +86,70 @@ export default function Auth() {
         email,
         password,
         options: {
-          emailRedirectTo: redirectTo
+          emailRedirectTo: redirectTo,
+          data: {
+            full_name: name,
+          }
         }
       });
+      
       if (error) throw error;
       toast({ title: "Success", description: "Check your email to confirm your account" });
     } catch (err: any) {
+      // If user already exists, redirect to sign in
+      if (err?.message?.includes("User already registered")) {
+        toast({ 
+          title: "Account exists", 
+          description: "An account with this email already exists. Please sign in instead." 
+        });
+        setActiveTab("signin");
+        return;
+      }
       toast({ title: "Sign up error", description: err?.message ?? "Please try again" });
     } finally {
       setLoading(false);
     }
   };
 
+  const resetPassword = async () => {
+    if (!resetEmail) {
+      toast({ title: "Error", description: "Please enter your email address" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const redirectTo = `${window.location.origin}/auth`;
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo,
+      });
+      
+      if (error) throw error;
+      toast({ 
+        title: "Reset email sent", 
+        description: "Check your email for password reset instructions" 
+      });
+      setShowForgotPassword(false);
+      setResetEmail("");
+    } catch (err: any) {
+      toast({ title: "Reset error", description: err?.message ?? "Please try again" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearForm = () => {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setName("");
+  };
+
   return (
     <main className="container py-10">
       <Helmet>
         <title>Sign In — The Cave Gym</title>
-        <meta name="description" content="Sign in with Google or email to create leaderboards and manage submissions." />
+        <meta name="description" content="Sign in with email to create leaderboards and manage submissions." />
         <link rel="canonical" href={canonical} />
       </Helmet>
 
@@ -114,113 +160,153 @@ export default function Auth() {
         <Card>
           <CardHeader className="text-center">
             <CardTitle>Authentication</CardTitle>
-            <CardDescription>Choose your preferred sign-in method</CardDescription>
+            <CardDescription>Enter your details to continue</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Google Sign In */}
-            <Button 
-              variant="outline" 
-              onClick={signInWithGoogle}
-              className="w-full"
-              size="lg"
-              disabled={loading}
-            >
-              Continue with Google
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            {/* Email/Password Authentication */}
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="signin" className="space-y-4 mt-4">
+            {showForgotPassword ? (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold">Reset Password</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your email to receive reset instructions
+                  </p>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="reset-email">Email</Label>
                   <Input
-                    id="signin-email"
+                    id="reset-email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="Enter your email"
                     disabled={loading}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
-                  <Input
-                    id="signin-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={resetPassword} 
+                    className="flex-1"
                     disabled={loading}
-                  />
-                </div>
-                <Button 
-                  onClick={signInWithEmail} 
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-              </TabsContent>
-              
-              <TabsContent value="signup" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                  >
+                    {loading ? "Sending..." : "Send Reset Email"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowForgotPassword(false)}
                     disabled={loading}
-                  />
+                  >
+                    Back
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Create a password"
+              </div>
+            ) : (
+              <Tabs value={activeTab} onValueChange={(value) => {
+                setActiveTab(value);
+                clearForm();
+              }} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="signin" className="space-y-4 mt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setShowForgotPassword(true)}
+                      disabled={loading}
+                      className="px-0 h-auto text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
+                  <Button 
+                    onClick={signInWithEmail} 
+                    className="w-full"
                     disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
+                  >
+                    {loading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </TabsContent>
+                
+                <TabsContent value="signup" className="space-y-4 mt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your full name"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a password"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm your password"
+                      disabled={loading}
+                    />
+                  </div>
+                  <Button 
+                    onClick={signUpWithEmail} 
+                    className="w-full"
                     disabled={loading}
-                  />
-                </div>
-                <Button 
-                  onClick={signUpWithEmail} 
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? "Creating account..." : "Create Account"}
-                </Button>
-              </TabsContent>
-            </Tabs>
+                  >
+                    {loading ? "Creating account..." : "Create Account"}
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
