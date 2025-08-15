@@ -28,6 +28,7 @@ interface Leaderboard {
   submissions_per_user?: number;
   end_date?: string;
   submission_deadline?: string;
+  logo_url?: string;
 }
 
 interface LeaderboardStats {
@@ -172,6 +173,13 @@ export default function Manage() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Button>
+              {leaderboard.logo_url && (
+                <img 
+                  src={leaderboard.logo_url} 
+                  alt={`${leaderboard.title} logo`}
+                  className="h-8 w-auto"
+                />
+              )}
               <div>
                 <h1 className="text-2xl font-bold">{leaderboard.title}</h1>
                 <p className="text-muted-foreground">Manage your leaderboard</p>

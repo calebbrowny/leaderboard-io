@@ -14,15 +14,13 @@ import { Upload, Video, Clock, AlertCircle } from "lucide-react";
 type MetricType = "time" | "reps" | "distance" | "weight";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface LeaderboardMeta {
+export interface LeaderboardMeta {
   id: string;
   title: string;
-  metric_type: MetricType;
-  unit?: string | null;
-  smart_time_parsing: boolean;
-  requires_verification: boolean;
-  auto_approve: boolean;
-  submissions_per_user?: number | null;
+  metricType: MetricType;
+  units?: string | null;
+  smartTimeParsing: boolean;
+  requiresVerification: boolean;
 }
 
 const schema = z
@@ -137,7 +135,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
-      const { raw, display } = parseToRawSmart(leaderboard.metric_type, data.value, leaderboard.smart_time_parsing);
+      const { raw, display } = parseToRawSmart(leaderboard.metricType, data.value, leaderboard.smartTimeParsing);
 
       let finalProofUrl = data.proofUrl || "";
       let videoUrl = "";
@@ -188,20 +186,18 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: finalProofUrl || null,
         video_url: videoUrl || null,
-        status: leaderboard.auto_approve ? 'APPROVED' : 'PENDING',
+        status: 'PENDING',
         submission_metadata: {
-          smart_parsing_used: leaderboard.smart_time_parsing,
+          smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value
         }
       });
 
       if (submitError) throw submitError;
 
-      const statusMessage = leaderboard.auto_approve 
-        ? "Your submission has been approved and added to the leaderboard!"
-        : leaderboard.requires_verification 
-          ? "Submission received! It will appear on the leaderboard once approved."
-          : "Submission received and added to the leaderboard!";
+      const statusMessage = leaderboard.requiresVerification 
+        ? "Submission received! It will appear on the leaderboard once approved."
+        : "Submission received and added to the leaderboard!";
 
       toast({ 
         title: "Submitted successfully!", 
@@ -220,7 +216,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
   };
 
   const getTimeInputPlaceholder = () => {
-    if (leaderboard.smart_time_parsing) {
+    if (leaderboard.smartTimeParsing) {
       return "e.g., 12:30, 1h 30m, 12mins 30sec";
     }
     return "mm:ss or hh:mm:ss";
@@ -234,7 +230,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
           Submit to {leaderboard.title}
         </CardTitle>
         <CardDescription>
-          {leaderboard.requires_verification && !leaderboard.auto_approve && (
+          {leaderboard.requiresVerification && (
             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded">
               <AlertCircle className="h-4 w-4" />
               Submissions require manual approval
@@ -293,17 +289,17 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
             
             <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                Result ({leaderboard.unit || leaderboard.metric_type}) *
-                {leaderboard.smart_time_parsing && leaderboard.metric_type === "time" && (
+                Result ({leaderboard.units || leaderboard.metricType}) *
+                {leaderboard.smartTimeParsing && leaderboard.metricType === "time" && (
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 )}
               </label>
               <Input 
-                placeholder={leaderboard.metric_type === "time" ? getTimeInputPlaceholder() : "Enter value"} 
+                placeholder={leaderboard.metricType === "time" ? getTimeInputPlaceholder() : "Enter value"} 
                 aria-invalid={!!errors.value} 
                 {...register("value")} 
               />
-              {leaderboard.smart_time_parsing && leaderboard.metric_type === "time" && (
+              {leaderboard.smartTimeParsing && leaderboard.metricType === "time" && (
                 <p className="text-xs text-muted-foreground">
                   Smart parsing enabled: accepts various time formats
                 </p>

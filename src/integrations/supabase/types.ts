@@ -79,6 +79,7 @@ export type Database = {
           description: string | null
           end_date: string | null
           id: string
+          logo_url: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
           requires_verification: boolean
@@ -98,6 +99,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           id?: string
+          logo_url?: string | null
           metric_type: Database["public"]["Enums"]["metric_type"]
           owner_user_id: string
           requires_verification?: boolean
@@ -117,6 +119,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           id?: string
+          logo_url?: string | null
           metric_type?: Database["public"]["Enums"]["metric_type"]
           owner_user_id?: string
           requires_verification?: boolean

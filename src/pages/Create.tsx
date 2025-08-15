@@ -38,6 +38,7 @@ export default function Create() {
     end_date: null as string | null,
     submission_deadline: null as string | null,
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const canonical = typeof window !== 'undefined' ? window.location.href : 'https://example.com/create';
 
@@ -111,6 +112,27 @@ export default function Create() {
         return;
       }
 
+      // Upload logo if provided
+      let logoUrl = null;
+      if (logoFile) {
+        const logoPath = `logos/${user.id}/${Date.now()}_${logoFile.name}`;
+        const { error: logoError } = await supabase.storage
+          .from('proofs')
+          .upload(logoPath, logoFile);
+        
+        if (logoError) {
+          console.error('Logo upload error:', logoError);
+          toast.error("Failed to upload logo. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        const { data: logoPublicUrl } = supabase.storage
+          .from('proofs')
+          .getPublicUrl(logoPath);
+        logoUrl = logoPublicUrl.publicUrl;
+      }
+
       const { data, error } = await supabase
         .from('leaderboards')
         .insert({
@@ -128,6 +150,7 @@ export default function Create() {
           submissions_per_user: formData.submissions_per_user,
           end_date: formData.end_date,
           submission_deadline: formData.submission_deadline,
+          logo_url: logoUrl,
         })
         .select()
         .single();
@@ -247,6 +270,21 @@ export default function Create() {
                   placeholder="Describe your competition, its goals, and what participants should know..."
                   rows={3}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="logo">Logo (optional)</Label>
+                <Input
+                  id="logo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                />
+                {logoFile && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {logoFile.name} ({(logoFile.size / 1024 / 1024).toFixed(1)} MB)
+                  </p>
+                )}
               </div>
             </div>
           </Card>

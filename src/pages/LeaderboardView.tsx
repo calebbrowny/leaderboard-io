@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LeaderboardTable, LeaderboardSubmission, SortDirection } from "@/components/LeaderboardTable";
-import { SubmissionForm, ChallengeMeta } from "@/components/SubmissionForm";
+import { EnhancedSubmissionForm, LeaderboardMeta } from "@/components/EnhancedSubmissionForm";
 import { StatsBar, Stats } from "@/components/StatsBar";
 import { Badge } from "@/components/ui/badge";
 import { useParams, useNavigate } from "react-router-dom";
@@ -19,6 +19,9 @@ interface Leaderboard {
   unit: string;
   rules: string;
   created_at: string;
+  logo_url?: string;
+  requires_verification: boolean;
+  smart_time_parsing: boolean;
 }
 
 export default function LeaderboardView() {
@@ -132,9 +135,13 @@ export default function LeaderboardView() {
     );
   }
 
-  const challengeMeta: ChallengeMeta = {
+  const leaderboardMeta: LeaderboardMeta = {
     id: leaderboard.id,
+    title: leaderboard.title,
     metricType: leaderboard.metric_type as any,
+    units: leaderboard.unit,
+    requiresVerification: leaderboard.requires_verification,
+    smartTimeParsing: leaderboard.smart_time_parsing,
   };
 
   return (
@@ -151,6 +158,15 @@ export default function LeaderboardView() {
             <Badge variant="secondary" className="mb-4">
               Live Leaderboard
             </Badge>
+            {leaderboard.logo_url && (
+              <div className="mb-6">
+                <img 
+                  src={leaderboard.logo_url} 
+                  alt={`${leaderboard.title} logo`}
+                  className="h-16 w-auto mx-auto"
+                />
+              </div>
+            )}
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
               {leaderboard.title}
             </h1>
@@ -177,7 +193,7 @@ export default function LeaderboardView() {
         <div className="mb-8">
           <Card className="p-6">
             <h2 className="text-2xl font-bold mb-4">Submit Your Score</h2>
-            <SubmissionForm challenge={challengeMeta} />
+            <EnhancedSubmissionForm leaderboard={leaderboardMeta} />
           </Card>
         </div>
 
