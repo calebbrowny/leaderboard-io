@@ -34,6 +34,14 @@ export default function Dashboard() {
     }
   }, [user, loading, navigate]);
 
+  // Clean up OAuth hash fragments after successful authentication
+  useEffect(() => {
+    if (user && window.location.hash.includes('access_token')) {
+      // Clear the hash after successful OAuth login
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       loadUserLeaderboards();
