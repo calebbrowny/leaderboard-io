@@ -12,13 +12,9 @@ export default function Landing() {
   const navigate = useNavigate();
   const canonical = typeof window !== 'undefined' ? window.location.href : 'https://example.com';
 
-  // Redirect authenticated users to dashboard and clean up OAuth tokens
+  // Redirect authenticated users to dashboard
   useEffect(() => {
     if (user && !loading) {
-      // Clean up OAuth hash fragments if present
-      if (window.location.hash.includes('access_token')) {
-        window.history.replaceState(null, '', window.location.pathname);
-      }
       navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
