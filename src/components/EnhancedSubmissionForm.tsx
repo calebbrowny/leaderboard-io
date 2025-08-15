@@ -1,19 +1,16 @@
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Video, Clock, AlertCircle } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Upload } from "lucide-react";
+
 type MetricType = "time" | "reps" | "distance" | "weight";
-import { useAuth } from "@/contexts/AuthContext";
 
 export interface LeaderboardMeta {
   id: string;
@@ -33,7 +30,6 @@ const schema = z
     gender: z.enum(["male", "female", "other"]),
     value: z.string().min(1, "Please enter your result"),
     proofUrl: z.string().url().optional().or(z.literal("")),
-    proofFile: z.any().optional(),
     accept: z.boolean().refine((v) => v === true, "You must accept the rules & terms"),
     website: z.string().optional(), // honeypot
   })
@@ -111,100 +107,42 @@ function parseToRawSmart(metric: MetricType, v: string, smartParsing: boolean): 
 
 export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: LeaderboardMeta }) {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  
-  // Time input state for dropdown-based time entry
-  const [timeInput, setTimeInput] = useState({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
   
   const {
     register,
     handleSubmit,
     reset,
     control,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({ 
     resolver: zodResolver(schema), 
     defaultValues: { 
-      gender: "male",
-      fullName: user?.user_metadata?.full_name || "",
-      email: user?.email || ""
+      gender: "male"
     }
   });
 
-  const watchedFile = watch("proofFile");
-
   const onSubmit = async (data: z.infer<typeof schema>) => {
-    setIsUploading(true);
     try {
-      console.log('🚀 ULTRA SIMPLE SUBMISSION:', { 
-        user: user ? 'LOGGED_IN' : 'ANONYMOUS',
-        leaderboard: leaderboard.id 
-      });
+      console.log('🚀 SIMPLE SUBMISSION:', { leaderboard: leaderboard.id });
       
-      // Parse the value
-      let valueToUse = data.value;
-      if (leaderboard.metricType === 'time') {
-        valueToUse = `${timeInput.hours}:${timeInput.minutes.toString().padStart(2, '0')}:${timeInput.seconds.toString().padStart(2, '0')}`;
-      }
-      
-      const { raw, display } = parseToRawSmart(leaderboard.metricType, valueToUse, leaderboard.smartTimeParsing);
+      // Parse the value using smart parsing
+      const { raw, display } = parseToRawSmart(leaderboard.metricType, data.value, leaderboard.smartTimeParsing);
       console.log('✅ Value parsed:', { raw, display });
 
-      // Handle file upload (SIMPLIFIED)
-      let finalProofUrl = data.proofUrl || "";
-      let videoUrl = "";
-      
-      const file = (data as any).proofFile?.[0] as File | undefined;
-      if (file) {
-        console.log('📁 Uploading file...');
-        
-        // ULTRA SIMPLE PATH - no user folders, just public files
-        const fileId = crypto.randomUUID();
-        const bucket = file.type.startsWith("video/") ? "video-proofs" : "proofs";
-        const path = `public/${fileId}-${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from(bucket)
-          .upload(path, file, { upsert: false });
-        
-        if (uploadError) {
-          console.error('❌ Upload failed:', uploadError);
-          throw new Error(`Upload failed: ${uploadError.message}`);
-        }
-        
-        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
-        
-        if (file.type.startsWith("video/")) {
-          videoUrl = publicData.publicUrl;
-        } else {
-          finalProofUrl = publicData.publicUrl;
-        }
-        
-        console.log('✅ File uploaded');
-      }
-
-      // ULTRA SIMPLE DATABASE INSERT
+      // Simple database insert
       const submissionData = {
         leaderboard_id: leaderboard.id,
-        user_id: user?.id || null,
+        user_id: null, // Anonymous submission for now
         full_name: data.fullName,
         email: data.email,
         gender: data.gender,
         value_raw: raw,
         value_display: display,
-        proof_url: finalProofUrl || null,
-        video_url: videoUrl || null,
+        proof_url: data.proofUrl || null,
         status: 'APPROVED' as const,
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
-          original_input: valueToUse
+          original_input: data.value
         }
       };
       
@@ -228,7 +166,6 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
       });
       
       reset();
-      setUploadProgress(0);
     } catch (error: any) {
       console.error('❌ SUBMISSION FAILED:', error);
       toast({ 
@@ -236,8 +173,6 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         description: error.message || "Unknown error",
         variant: "destructive"
       });
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -309,122 +244,34 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
             </div>
             
             <div className="md:col-span-2 space-y-2">
-            <div className="grid gap-4">
-              {leaderboard.metricType === 'time' ? (
-                // Dropdown-based time entry
-                <div className="space-y-3">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    Time Result *
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label htmlFor="hours" className="text-xs">Hours</Label>
-                      <Select value={timeInput.hours.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, hours: parseInt(value) }))}>
-                        <SelectTrigger className="bg-background z-50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50 max-h-48">
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <SelectItem key={i} value={i.toString()}>{i}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="minutes" className="text-xs">Minutes</Label>
-                      <Select value={timeInput.minutes.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, minutes: parseInt(value) }))}>
-                        <SelectTrigger className="bg-background z-50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50 max-h-48">
-                          {Array.from({ length: 60 }, (_, i) => (
-                            <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="seconds" className="text-xs">Seconds</Label>
-                      <Select value={timeInput.seconds.toString()} onValueChange={(value) => setTimeInput(prev => ({ ...prev, seconds: parseInt(value) }))}>
-                        <SelectTrigger className="bg-background z-50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50 max-h-48">
-                          {Array.from({ length: 60 }, (_, i) => (
-                            <SelectItem key={i} value={i.toString()}>{i.toString().padStart(2, '0')}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Select your time from the dropdown menus
-                  </p>
-                  {/* Hidden input to satisfy form validation */}
-                  <input type="hidden" {...register("value")} value={`${timeInput.hours}:${timeInput.minutes}:${timeInput.seconds}`} />
-                </div>
-              ) : (
-                // Regular text input for non-time metrics
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    Result ({leaderboard.units || leaderboard.metricType}) *
-                  </label>
-                  <Input 
-                    placeholder="Enter value" 
-                    aria-invalid={!!errors.value} 
-                    {...register("value")} 
-                  />
-                  {errors.value && (
-                    <p className="text-sm text-destructive mt-1">{errors.value.message}</p>
-                  )}
-                </div>
-               )}
-               {errors.value && <p className="text-sm text-destructive">{errors.value.message}</p>}
-            </div>
-          </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Proof URL (optional)</label>
-              <Input 
-                placeholder="Link to video, Strava, etc." 
-                {...register("proofUrl")} 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Video className="h-4 w-4" />
-                Or upload proof file (image/video)
+              <label className="text-sm font-medium">
+                Result ({leaderboard.units || leaderboard.metricType}) *
               </label>
               <Input 
-                type="file" 
-                accept="image/*,video/*" 
-                {...register("proofFile")} 
+                placeholder={leaderboard.metricType === 'time' ? getTimeInputPlaceholder() : "Enter value"} 
+                aria-invalid={!!errors.value} 
+                {...register("value")} 
               />
-              {!user && (
-                <p className="text-xs text-muted-foreground">Login required to upload files</p>
+              {errors.value && (
+                <p className="text-sm text-destructive mt-1">{errors.value.message}</p>
               )}
-              {watchedFile?.[0] && (
+              {leaderboard.metricType === 'time' && leaderboard.smartTimeParsing && (
                 <p className="text-xs text-muted-foreground">
-                  Selected: {watchedFile[0].name} ({(watchedFile[0].size / 1024 / 1024).toFixed(1)} MB)
+                  You can enter time in various formats: 12:30, 1h 30m, 12mins 30sec, etc.
                 </p>
               )}
             </div>
+          </div>
 
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <Progress value={uploadProgress} className="w-full" />
-              </div>
-            )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Proof URL (optional)</label>
+            <Input 
+              placeholder="Link to video, Strava, etc." 
+              {...register("proofUrl")} 
+            />
+            <p className="text-xs text-muted-foreground">
+              Add a link to verify your result (YouTube, Strava, etc.)
+            </p>
           </div>
 
           <Controller
@@ -449,13 +296,13 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
           {errors.accept && <p className="text-sm text-destructive">{errors.accept.message}</p>}
 
           <div className="flex justify-end pt-4">
-            <Button 
-              type="submit" 
-              disabled={isSubmitting || isUploading} 
-              className="min-w-[120px]"
-            >
-              {isSubmitting ? "Submitting..." : "Submit Entry"}
-            </Button>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="min-w-[120px]"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Entry"}
+          </Button>
           </div>
         </form>
       </CardContent>
