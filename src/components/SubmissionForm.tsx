@@ -102,7 +102,7 @@ export function SubmissionForm({ challenge }: { challenge: ChallengeMeta }) {
         value_raw: raw,
         value_display: display,
         proof_url: finalProofUrl || null,
-        status: 'PENDING' as const,
+     status: 'APPROVED' as const,
         submission_metadata: {
           source: 'basic_form',
           original_input: data.value
