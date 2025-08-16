@@ -273,10 +273,7 @@ const submissionData = {
           has_video: !!videoUrl
         }
       };:
-          original_input: data.value,
-          has_video: !!videoUrl
-        }
-      };
+        
       
       console.log('💾 INSERTING:', submissionData);
       
