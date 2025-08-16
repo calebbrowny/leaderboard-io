@@ -15,7 +15,8 @@ type MetricType = "time" | "reps" | "distance" | "weight";
 
 export interface LeaderboardMeta {
   id: string;
-  title: string;
+  ttitle: stringg;
+  
   metricType: MetricType;
   units?: string | null;
   smartTimeParsing: boolean;
@@ -265,7 +266,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         value_display: display,
         proof_url: data.proofUrl || null,
         video_url: videoUrl,
-        status: 'PENDING' as const,
+     status: 'DAPPROVED' as const,const,
         submission_metadata: {
           smart_parsing_used: leaderboard.smartTimeParsing,
           original_input: data.value,
