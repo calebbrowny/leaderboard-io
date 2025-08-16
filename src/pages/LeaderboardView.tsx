@@ -70,14 +70,14 @@ export default function LeaderboardView() {
       } else if (submissionsData) {
         // Transform the secure data to match the expected format
         const transformedSubmissions = submissionsData.map(sub => ({
-          id: sub.id,
-          fullName: sub.display_name, // Now shows initials only for privacy
+          id: sub.id || '',
+          fullName: sub.display_name || 'Anonymous', // Now shows initials only for privacy
           email: '', // Hidden for privacy
-          valueRaw: sub.value_raw,
-          valueDisplay: sub.value_display,
+          valueRaw: sub.value_raw || 0,
+          valueDisplay: sub.value_display || '',
           gender: sub.gender,
-          submittedAt: sub.submitted_at,
-          approvedAt: sub.approved_at || sub.submitted_at,
+          submittedAt: sub.submitted_at || new Date().toISOString(),
+          approvedAt: sub.approved_at || sub.submitted_at || new Date().toISOString(),
           proofUrl: sub.proof_url || null,
           videoUrl: sub.video_url || null
         }));

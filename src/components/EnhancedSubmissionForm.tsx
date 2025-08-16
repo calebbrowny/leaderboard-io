@@ -26,16 +26,42 @@ const schema = z
     fullName: z
       .string()
       .min(2, "Please enter your full name")
-      .refine((v) => !/(fuck|shit|cunt|bitch|asshole|damn)/i.test(v), "Inappropriate words are not allowed"),
-    email: z.string().email("Enter a valid email"),
+      .max(100, "Name too long")
+      .regex(/^[A-Za-z\s\-'\.]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes"),
+    email: z.string().email("Enter a valid email").max(254, "Email too long"),
     gender: z.enum(["male", "female", "other"]),
-    value: z.string().min(1, "Please enter your result"),
+    value: z.string().min(1, "Please enter your result").max(50, "Result too long"),
     proofUrl: z.string().url().optional().or(z.literal("")),
     videoFile: z.instanceof(File).optional(),
     accept: z.boolean().refine((v) => v === true, "You must accept the rules & terms"),
     website: z.string().optional(), // honeypot
   })
-  .refine((data) => !data.website, { message: "Invalid", path: ["website"] });
+  .refine((data) => !data.website, { message: "Invalid", path: ["website"] })
+  .refine((data) => {
+    // Enhanced profanity and content validation
+    const validateContent = (text: string) => {
+      const cleanedText = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const patterns = [
+        'fuck', 'shit', 'cunt', 'bitch', 'damn', 'hell', 'ass', 'bastard',
+        'fck', 'fuk', 'sht', 'btch', 'dmn', 'hll'
+      ];
+      return !patterns.some(pattern => cleanedText.includes(pattern));
+    };
+    
+    return validateContent(data.fullName);
+  }, {
+    message: "Inappropriate content detected in name",
+    path: ["fullName"],
+  })
+  .refine((data) => {
+    // Validate email domain isn't suspicious
+    const suspiciousDomains = ['tempmail', 'guerrillamail', '10minutemail', 'throwaway'];
+    const domain = data.email.split('@')[1]?.toLowerCase() || '';
+    return !suspiciousDomains.some(suspicious => domain.includes(suspicious));
+  }, {
+    message: "Please use a valid email address",
+    path: ["email"],
+  });
 
 function parseToRawSmart(metric: MetricType, v: string, smartParsing: boolean): { raw: number; display: string } {
   const value = v.trim().toLowerCase();
@@ -130,12 +156,17 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('video/')) {
+      // Enhanced file validation
+      const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+      const allowedExtensions = ['.mp4', '.mov', '.avi', '.webm'];
+      
+      // Check both MIME type and extension
+      const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+      if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
         toast({
           title: "Invalid file type",
-          description: "Please select a video file",
-          variant: "destructive"
+          description: "Please upload a video file (MP4, MOV, AVI, or WebM)",
+          variant: "destructive",
         });
         return;
       }
@@ -146,6 +177,17 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
           title: "File too large",
           description: "Video must be under 50MB",
           variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check for suspicious file names
+      const suspiciousPatterns = /[<>:"\\|?*]/;
+      if (suspiciousPatterns.test(file.name)) {
+        toast({
+          title: "Invalid file name",
+          description: "File name contains invalid characters",
+          variant: "destructive",
         });
         return;
       }
@@ -169,18 +211,29 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
 
       let videoUrl = null;
 
-      // Upload video if provided
+      // Upload video if provided (only for authenticated users now)
       if (selectedFile) {
         console.log('📹 Uploading video...');
         setUploadProgress(0);
         
-        // Create unique file path for anonymous uploads  
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          toast({
+            title: "Authentication required",
+            description: "Please sign in to upload video proof",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const fileExt = selectedFile.name.split('.').pop();
-        const fileName = `${crypto.randomUUID()}_${selectedFile.name}`;
-        const filePath = `anonymous/${fileName}`;
+        const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${session.user.id}/${fileName}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('proofs')
+          .from('video-proofs')
           .upload(filePath, selectedFile, {
             cacheControl: '3600',
             upsert: false
@@ -195,7 +248,7 @@ export function EnhancedSubmissionForm({ leaderboard }: { leaderboard: Leaderboa
         
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-          .from('proofs')
+          .from('video-proofs')
           .getPublicUrl(filePath);
         
         videoUrl = publicUrl;

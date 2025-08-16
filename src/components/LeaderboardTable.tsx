@@ -51,7 +51,11 @@ function rankSubmissions(
 }
 
 function nameShort(fullName: string) {
-  const parts = fullName.trim().split(/\s+/);
+  // Additional privacy protection - ensure no sensitive data leaks
+  if (!fullName || fullName.trim() === '') return 'Anonymous';
+  
+  const sanitized = fullName.replace(/[<>&"']/g, ''); // Prevent XSS
+  const parts = sanitized.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
   const last = parts[parts.length - 1];
   return `${parts[0]} ${last.charAt(0)}.`;
